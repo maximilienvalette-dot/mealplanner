@@ -59,29 +59,28 @@ function RecipesStackScreen() {
   );
 }
 
-// Détecte si l'app tourne en PWA installée (plein écran) : dans ce cas le
-// contenu va jusqu'au bord et il faut dégager la barre de gestes du bas.
-function isStandalonePWA() {
+// Sur mobile web (navigateur ET PWA), la barre de gestes du système recouvre
+// les ~24-34 derniers pixels de la fenêtre, ce qui rogne les libellés de la
+// barre d'onglets. env(safe-area-inset-bottom) n'est pas fiable sur Android,
+// donc on réserve une marge fixe dès qu'on est sur un appareil tactile.
+function isWebTouch() {
   return (
     Platform.OS === "web" &&
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
-    (window.matchMedia("(display-mode: standalone)").matches ||
-      window.matchMedia("(display-mode: fullscreen)").matches ||
-      window.navigator.standalone === true)
+    window.matchMedia("(pointer: coarse)").matches
   );
 }
 
 function AppContent() {
-  // Marge de sécurité du bas (barre de gestes / home indicator) ajoutée à la
-  // barre d'onglets pour que les libellés ne soient jamais rognés.
+  // Marge de sécurité du bas ajoutée à la barre d'onglets pour que les
+  // libellés ne soient jamais rognés par la barre de gestes / home indicator.
   //  - natif : inset réel de l'appareil ;
-  //  - PWA installée : plancher de 28px (Android n'expose pas l'inset) ;
-  //  - onglet navigateur : 0 (le navigateur réserve déjà la zone du bas).
+  //  - mobile web (onglet ou PWA) : 34px fixes ;
+  //  - desktop web : 0.
   const insets = useSafeAreaInsets();
-  const bottomInset = isStandalonePWA()
-    ? Math.max(insets.bottom, 28)
-    : insets.bottom;
+  const bottomInset =
+    Platform.OS === "web" ? (isWebTouch() ? 34 : 0) : insets.bottom;
 
   return (
     <NavigationContainer onReady={() => SplashScreen.hideAsync()}>
