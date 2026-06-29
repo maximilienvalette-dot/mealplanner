@@ -2,7 +2,7 @@
 // L'onglet Recettes contient une pile (liste -> ajout/édition).
 
 import React from "react";
-import { Platform } from "react-native";
+import { Platform, View, Text } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -40,7 +40,31 @@ const screenHeader = {
   headerTitleStyle: { fontFamily: fonts.extrabold, fontSize: 19 },
 };
 
-const tabLabelStyle = { fontFamily: fonts.semibold, fontSize: 11 };
+const TAB_ICONS = { Recettes: "restaurant", Semaine: "calendar", Courses: "cart" };
+const TAB_LABELS = { Recettes: "Recettes", Semaine: "Semaine", Courses: "Courses" };
+
+// On dessine nous-mêmes icône + libellé (au lieu du label intégré de
+// react-navigation, qui fige une hauteur de texte erronée en web avec une
+// police custom -> texte rogné). Ici, lineHeight maîtrisée = aucun clip.
+function TabItem({ routeName, color }) {
+  return (
+    <View style={{ alignItems: "center", justifyContent: "center", width: 76 }}>
+      <Ionicons name={TAB_ICONS[routeName]} size={22} color={color} />
+      <Text
+        numberOfLines={1}
+        style={{
+          fontFamily: fonts.semibold,
+          fontSize: 11,
+          lineHeight: 14,
+          color,
+          marginTop: 3,
+        }}
+      >
+        {TAB_LABELS[routeName]}
+      </Text>
+    </View>
+  );
+}
 
 function RecipesStackScreen() {
   return (
@@ -90,24 +114,17 @@ function AppContent() {
           ...screenHeader,
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textMuted,
-          tabBarLabelStyle: tabLabelStyle,
+          tabBarShowLabel: false,
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopColor: colors.border,
-            height: 60 + bottomInset,
-            paddingBottom: bottomInset + 8,
+            height: 58 + bottomInset,
+            paddingBottom: bottomInset + 6,
             paddingTop: 6,
           },
-          tabBarIcon: ({ color, size }) => {
-            const icons = {
-              Recettes: "restaurant",
-              Semaine: "calendar",
-              Courses: "cart",
-            };
-            return (
-              <Ionicons name={icons[route.name]} size={size} color={color} />
-            );
-          },
+          tabBarIcon: ({ color }) => (
+            <TabItem routeName={route.name} color={color} />
+          ),
         })}
       >
         <Tab.Screen
