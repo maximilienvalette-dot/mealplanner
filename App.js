@@ -104,7 +104,7 @@ function AppContent() {
   //  - desktop web : 0.
   const insets = useSafeAreaInsets();
   const bottomInset =
-    Platform.OS === "web" ? (isWebTouch() ? 24 : 0) : insets.bottom;
+    Platform.OS === "web" ? (isWebTouch() ? 12 : 0) : insets.bottom;
 
   return (
     <NavigationContainer onReady={() => SplashScreen.hideAsync()}>
