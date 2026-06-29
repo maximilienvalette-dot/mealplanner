@@ -57,13 +57,20 @@ if (html.includes("id=\"safe-area-fix\"")) {
     "</head>",
     `  <style id="safe-area-fix">
     html, body, #root { background-color: #FFFFFF; }
-    #root { box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom, 0px); }
+    /* 100svh = hauteur de viewport "sûre" (exclut l'UI navigateur) : évite que
+       le bas de l'app (barre d'onglets) passe sous le bord visible sur mobile. */
+    #root {
+      box-sizing: border-box;
+      height: 100vh;
+      height: 100svh;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
     @media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
       #root { padding-bottom: max(env(safe-area-inset-bottom, 0px), 28px); }
     }
   </style>\n  </head>`
   );
-  console.log("inject-web-fixes: padding safe-area (env + plancher PWA) injecté sur #root");
+  console.log("inject-web-fixes: hauteur 100svh + padding safe-area injectés sur #root");
 }
 
 fs.writeFileSync(file, html);
