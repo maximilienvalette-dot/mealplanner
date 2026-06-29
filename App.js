@@ -104,7 +104,7 @@ function AppContent() {
   //  - desktop web : 0.
   const insets = useSafeAreaInsets();
   const bottomInset =
-    Platform.OS === "web" ? (isWebTouch() ? 34 : 0) : insets.bottom;
+    Platform.OS === "web" ? (isWebTouch() ? 24 : 0) : insets.bottom;
 
   return (
     <NavigationContainer onReady={() => SplashScreen.hideAsync()}>
@@ -118,7 +118,7 @@ function AppContent() {
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopColor: colors.border,
-            height: 58 + bottomInset,
+            height: 52 + bottomInset,
             paddingBottom: bottomInset + 6,
             paddingTop: 6,
           },
