@@ -75,9 +75,9 @@ function AppContent() {
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopColor: colors.border,
-            height: 60 + insets.bottom,
-            paddingBottom: insets.bottom + 8,
-            paddingTop: 6,
+            height: 64 + insets.bottom,
+            paddingBottom: insets.bottom + 10,
+            paddingTop: 8,
           },
           tabBarIcon: ({ color, size }) => {
             const icons = {

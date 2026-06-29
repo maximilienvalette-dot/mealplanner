@@ -58,9 +58,12 @@ if (html.includes("id=\"safe-area-fix\"")) {
     `  <style id="safe-area-fix">
     html, body, #root { background-color: #FFFFFF; }
     #root { box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom, 0px); }
+    @media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+      #root { padding-bottom: max(env(safe-area-inset-bottom, 0px), 28px); }
+    }
   </style>\n  </head>`
   );
-  console.log("inject-web-fixes: padding safe-area (env) injecté sur #root");
+  console.log("inject-web-fixes: padding safe-area (env + plancher PWA) injecté sur #root");
 }
 
 fs.writeFileSync(file, html);
