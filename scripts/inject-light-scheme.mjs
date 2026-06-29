@@ -56,21 +56,14 @@ if (html.includes("id=\"safe-area-fix\"")) {
   html = html.replace(
     "</head>",
     `  <style id="safe-area-fix">
-    html, body, #root { background-color: #FFFFFF; }
     /* 100svh = hauteur de viewport "sûre" (exclut l'UI navigateur) : évite que
-       le bas de l'app (barre d'onglets) passe sous le bord visible sur mobile. */
-    #root {
-      box-sizing: border-box;
-      height: 100vh;
-      height: 100svh;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-    }
-    @media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
-      #root { padding-bottom: max(env(safe-area-inset-bottom, 0px), 28px); }
-    }
+       le bas de l'app (barre d'onglets) passe sous le bord visible sur mobile.
+       Pas de padding ni de fond ajouté ici, pour ne créer aucune bande. */
+    html, body { height: 100svh; }
+    #root { height: 100vh; height: 100svh; }
   </style>\n  </head>`
   );
-  console.log("inject-web-fixes: hauteur 100svh + padding safe-area injectés sur #root");
+  console.log("inject-web-fixes: hauteur 100svh injectée sur html/body/#root");
 }
 
 fs.writeFileSync(file, html);
