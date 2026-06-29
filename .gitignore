@@ -1,6 +1,7 @@
 node_modules/
 .expo/
 dist/
+distx/
 dist-web/
 dist-test/
 web-build/
