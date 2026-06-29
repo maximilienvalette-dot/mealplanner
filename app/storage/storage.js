@@ -8,6 +8,7 @@ const KEYS = {
   PLANNING: "@mealplanner/planning",
   SHOPPING: "@mealplanner/shopping",
   CATEGORY_OVERRIDES: "@mealplanner/categoryOverrides",
+  RECIPE_CATEGORIES: "@mealplanner/recipeCategories",
 };
 
 // --- Helpers bas niveau --------------------------------------------------
@@ -69,13 +70,15 @@ export async function deleteRecipe(id) {
   const next = recipes.filter((r) => r.id !== id);
   await writeJSON(KEYS.RECIPES, next);
 
-  // Nettoie le planning des créneaux référençant cette recette
+  // Nettoie le planning des plats référençant cette recette
   const planning = await getPlanning();
   let changed = false;
-  for (const dayKey of Object.keys(planning)) {
-    for (const slotKey of Object.keys(planning[dayKey])) {
-      if (planning[dayKey][slotKey]?.recipeId === id) {
-        planning[dayKey][slotKey] = null;
+  for (const day of DAYS) {
+    for (const slot of SLOTS) {
+      const dishes = planning[day][slot];
+      const filtered = dishes.filter((d) => d.recipeId !== id);
+      if (filtered.length !== dishes.length) {
+        planning[day][slot] = filtered;
         changed = true;
       }
     }
@@ -95,26 +98,44 @@ export const DAYS = [
   "Dimanche",
 ];
 
-export const SLOTS = ["Matin", "Midi", "Soir"];
+export const SLOTS = ["Matin", "Midi", "Goûter", "Soir"];
 
-// Structure : { [jour]: { [créneau]: { recipeId, persons, checked } | null } }
+// Structure : { [jour]: { [créneau]: [ { recipeId, persons, checked } ] } }
+// Chaque créneau contient une LISTE de plats (0..n).
 export function emptyPlanning() {
   const planning = {};
   for (const day of DAYS) {
     planning[day] = {};
-    for (const slot of SLOTS) planning[day][slot] = null;
+    for (const slot of SLOTS) planning[day][slot] = [];
   }
   return planning;
 }
 
+// Normalise une valeur de créneau stockée vers une liste de plats.
+// Gère la migration de l'ancien format (un seul objet { recipeId, ... }).
+function normalizeSlot(value) {
+  if (Array.isArray(value)) {
+    return value.filter((d) => d && d.recipeId);
+  }
+  if (value && typeof value === "object" && value.recipeId) {
+    return [
+      {
+        recipeId: value.recipeId,
+        persons: value.persons,
+        checked: !!value.checked,
+      },
+    ];
+  }
+  return [];
+}
+
 export async function getPlanning() {
   const stored = await readJSON(KEYS.PLANNING, null);
-  if (!stored) return emptyPlanning();
-  // Fusionne avec la structure vide pour garantir tous les jours/créneaux
   const base = emptyPlanning();
+  if (!stored) return base;
   for (const day of DAYS) {
     for (const slot of SLOTS) {
-      if (stored[day] && stored[day][slot]) base[day][slot] = stored[day][slot];
+      base[day][slot] = normalizeSlot(stored[day] && stored[day][slot]);
     }
   }
   return base;
@@ -124,19 +145,43 @@ export async function savePlanning(planning) {
   await writeJSON(KEYS.PLANNING, planning);
 }
 
-// Assigne / met à jour un créneau. slotData = { recipeId, persons, checked }
-export async function setSlot(day, slot, slotData) {
+// Remplace toute la liste de plats d'un créneau.
+export async function setSlot(day, slot, dishes) {
   const planning = await getPlanning();
-  planning[day][slot] = slotData;
+  planning[day][slot] = Array.isArray(dishes) ? dishes : [];
+  await savePlanning(planning);
+  return planning;
+}
+
+// Ajoute un plat à un créneau. dish = { recipeId, persons, checked }
+export async function addDish(day, slot, dish) {
+  const planning = await getPlanning();
+  planning[day][slot] = [...planning[day][slot], dish];
+  await savePlanning(planning);
+  return planning;
+}
+
+// Met à jour le plat d'index donné dans un créneau.
+export async function updateDish(day, slot, index, dish) {
+  const planning = await getPlanning();
+  const dishes = planning[day][slot];
+  if (index >= 0 && index < dishes.length) {
+    dishes[index] = dish;
+    await savePlanning(planning);
+  }
+  return planning;
+}
+
+// Retire le plat d'index donné.
+export async function removeDish(day, slot, index) {
+  const planning = await getPlanning();
+  planning[day][slot] = planning[day][slot].filter((_, i) => i !== index);
   await savePlanning(planning);
   return planning;
 }
 
 export async function clearSlot(day, slot) {
-  const planning = await getPlanning();
-  planning[day][slot] = null;
-  await savePlanning(planning);
-  return planning;
+  return setSlot(day, slot, []);
 }
 
 // Réinitialise tout le planning de la semaine (recettes conservées).
@@ -212,4 +257,39 @@ export async function setCategoryOverride(normName, category) {
   overrides[normName] = category;
   await writeJSON(KEYS.CATEGORY_OVERRIDES, overrides);
   return overrides;
+}
+
+// --- Catégories de recettes (définies par l'utilisateur) -----------------
+//
+// Format : [{ id, name, emoji }]. Une recette pointe dessus via recipe.categoryId.
+
+export async function getCategories() {
+  const stored = await readJSON(KEYS.RECIPE_CATEGORIES, []);
+  return Array.isArray(stored) ? stored : [];
+}
+
+// cat = { id?, name, emoji } ; crée si pas d'id, sinon met à jour.
+export async function saveCategory(cat) {
+  const categories = await getCategories();
+  let saved;
+  if (cat.id) {
+    saved = { ...cat };
+    const idx = categories.findIndex((c) => c.id === cat.id);
+    if (idx >= 0) categories[idx] = saved;
+    else categories.push(saved);
+  } else {
+    saved = { ...cat, id: genId() };
+    categories.push(saved);
+  }
+  await writeJSON(KEYS.RECIPE_CATEGORIES, categories);
+  return saved;
+}
+
+// Supprime une catégorie ; les recettes concernées repassent "Sans catégorie".
+export async function deleteCategory(id) {
+  const categories = await getCategories();
+  await writeJSON(
+    KEYS.RECIPE_CATEGORIES,
+    categories.filter((c) => c.id !== id)
+  );
 }

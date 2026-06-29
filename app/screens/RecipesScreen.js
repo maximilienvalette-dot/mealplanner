@@ -1,24 +1,28 @@
-// Écran liste des recettes : afficher, modifier, supprimer, ajouter.
+// Écran liste des recettes : regroupées par catégorie (emoji + nom),
+// afficher, modifier, supprimer, ajouter.
 
 import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   TouchableOpacity,
   StyleSheet,
   Alert,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { getRecipes, deleteRecipe } from "../storage/storage";
+import { getRecipes, getCategories, deleteRecipe } from "../storage/storage";
 import { colors, spacing, radius, fonts } from "../theme";
 
 export default function RecipesScreen({ navigation }) {
   const [recipes, setRecipes] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   const load = useCallback(async () => {
-    setRecipes(await getRecipes());
+    const [r, c] = await Promise.all([getRecipes(), getCategories()]);
+    setRecipes(r);
+    setCategories(c);
   }, []);
 
   useFocusEffect(
@@ -26,6 +30,22 @@ export default function RecipesScreen({ navigation }) {
       load();
     }, [load])
   );
+
+  const catById = {};
+  for (const c of categories) catById[c.id] = c;
+
+  // Sections : une par catégorie non vide, dans l'ordre, puis "Sans catégorie".
+  const sections = [];
+  for (const cat of categories) {
+    const data = recipes.filter((r) => r.categoryId === cat.id);
+    if (data.length) sections.push({ key: cat.id, cat, data });
+  }
+  const uncategorized = recipes.filter(
+    (r) => !r.categoryId || !catById[r.categoryId]
+  );
+  if (uncategorized.length) {
+    sections.push({ key: "none", cat: null, data: uncategorized });
+  }
 
   const confirmDelete = (recipe) => {
     Alert.alert(
@@ -47,6 +67,7 @@ export default function RecipesScreen({ navigation }) {
 
   const renderItem = ({ item }) => {
     const count = item.ingredients?.length || 0;
+    const cat = item.categoryId ? catById[item.categoryId] : null;
     return (
       <TouchableOpacity
         style={styles.card}
@@ -55,7 +76,11 @@ export default function RecipesScreen({ navigation }) {
       >
         <View style={styles.cardLeft}>
           <View style={styles.iconBubble}>
-            <Ionicons name="restaurant" size={20} color={colors.white} />
+            {cat?.emoji ? (
+              <Text style={styles.bubbleEmoji}>{cat.emoji}</Text>
+            ) : (
+              <Ionicons name="restaurant" size={20} color={colors.white} />
+            )}
           </View>
           <View style={styles.cardInfo}>
             <Text style={styles.cardTitle}>{item.name}</Text>
@@ -76,11 +101,17 @@ export default function RecipesScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        data={recipes}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
+        stickySectionHeadersEnabled={false}
+        renderSectionHeader={({ section }) => (
+          <Text style={styles.sectionHeader}>
+            {section.cat ? `${section.cat.emoji}  ${section.cat.name}` : "Sans catégorie"}
+          </Text>
+        )}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="fast-food-outline" size={56} color={colors.border} />
@@ -106,6 +137,13 @@ export default function RecipesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   list: { padding: spacing.lg, paddingBottom: 100 },
+  sectionHeader: {
+    fontSize: 14,
+    fontFamily: fonts.extrabold,
+    color: colors.secondaryDark,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
   card: {
     backgroundColor: colors.card,
     borderRadius: radius.md,
@@ -127,6 +165,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: spacing.md,
   },
+  bubbleEmoji: { fontSize: 20 },
   cardInfo: { flex: 1 },
   cardTitle: { fontSize: 16, fontFamily: fonts.bold, color: colors.text },
   cardSub: {

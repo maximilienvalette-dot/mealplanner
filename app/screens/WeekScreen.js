@@ -19,8 +19,9 @@ import MealSlot from "../components/MealSlot";
 import {
   getRecipes,
   getPlanning,
-  setSlot,
-  clearSlot,
+  addDish,
+  updateDish,
+  removeDish,
   resetPlanning,
   applyGeneratedItems,
   getCategoryOverrides,
@@ -66,9 +67,9 @@ export default function WeekScreen({ navigation }) {
     setPicker({ visible: true, day, slot });
   };
 
-  const assignRecipe = async (recipe) => {
+  const addRecipeToSlot = async (recipe) => {
     const { day, slot } = picker;
-    const next = await setSlot(day, slot, {
+    const next = await addDish(day, slot, {
       recipeId: recipe.id,
       persons: recipe.refPersons,
       checked: true,
@@ -77,28 +78,26 @@ export default function WeekScreen({ navigation }) {
     setPicker({ visible: false, day: null, slot: null });
   };
 
-  const removeFromSlot = async () => {
-    const { day, slot } = picker;
-    const next = await clearSlot(day, slot);
-    setPlanning({ ...next });
-    setPicker({ visible: false, day: null, slot: null });
-  };
-
-  const toggleCheck = async (day, slot) => {
-    const current = planning[day][slot];
-    if (!current) return;
-    const next = await setSlot(day, slot, {
-      ...current,
-      checked: !current.checked,
+  const toggleDish = async (day, slot, index) => {
+    const dish = planning[day][slot][index];
+    if (!dish) return;
+    const next = await updateDish(day, slot, index, {
+      ...dish,
+      checked: !dish.checked,
     });
     setPlanning({ ...next });
   };
 
-  const changePersons = async (day, slot, delta) => {
-    const current = planning[day][slot];
-    if (!current) return;
-    const persons = Math.max(1, (current.persons || 1) + delta);
-    const next = await setSlot(day, slot, { ...current, persons });
+  const changeDishPersons = async (day, slot, index, delta) => {
+    const dish = planning[day][slot][index];
+    if (!dish) return;
+    const persons = Math.max(1, (dish.persons || 1) + delta);
+    const next = await updateDish(day, slot, index, { ...dish, persons });
+    setPlanning({ ...next });
+  };
+
+  const removeDishFromSlot = async (day, slot, index) => {
+    const next = await removeDish(day, slot, index);
     setPlanning({ ...next });
   };
 
@@ -107,7 +106,7 @@ export default function WeekScreen({ navigation }) {
     let n = 0;
     for (const day of DAYS)
       for (const slot of SLOTS)
-        if (planning[day][slot]?.checked) n += 1;
+        for (const dish of planning[day][slot]) if (dish.checked) n += 1;
     return n;
   };
 
@@ -115,10 +114,11 @@ export default function WeekScreen({ navigation }) {
     const meals = [];
     for (const day of DAYS) {
       for (const slot of SLOTS) {
-        const cell = planning[day][slot];
-        if (cell?.checked) {
-          const recipe = recipeById(cell.recipeId);
-          if (recipe) meals.push({ recipe, persons: cell.persons });
+        for (const dish of planning[day][slot]) {
+          if (dish.checked) {
+            const recipe = recipeById(dish.recipeId);
+            if (recipe) meals.push({ recipe, persons: dish.persons });
+          }
         }
       }
     }
@@ -165,7 +165,10 @@ export default function WeekScreen({ navigation }) {
 
   const checkedCount = countChecked();
   const dayChecked = (day) =>
-    SLOTS.reduce((n, slot) => n + (planning[day][slot]?.checked ? 1 : 0), 0);
+    SLOTS.reduce(
+      (n, slot) => n + planning[day][slot].filter((d) => d.checked).length,
+      0
+    );
 
   return (
     <View style={styles.container}>
@@ -217,21 +220,20 @@ export default function WeekScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.dayTitle}>{selectedDay}</Text>
-        {SLOTS.map((slot) => {
-          const cell = planning[selectedDay][slot];
-          const recipe = cell ? recipeById(cell.recipeId) : null;
-          return (
-            <MealSlot
-              key={slot}
-              slotLabel={slot}
-              slotData={cell}
-              recipe={recipe}
-              onPress={() => openPicker(selectedDay, slot)}
-              onToggleCheck={() => toggleCheck(selectedDay, slot)}
-              onChangePersons={(delta) => changePersons(selectedDay, slot, delta)}
-            />
-          );
-        })}
+        {SLOTS.map((slot) => (
+          <MealSlot
+            key={slot}
+            slotLabel={slot}
+            dishes={planning[selectedDay][slot]}
+            recipeById={recipeById}
+            onAddDish={() => openPicker(selectedDay, slot)}
+            onToggleDish={(index) => toggleDish(selectedDay, slot, index)}
+            onChangeDishPersons={(index, delta) =>
+              changeDishPersons(selectedDay, slot, index, delta)
+            }
+            onRemoveDish={(index) => removeDishFromSlot(selectedDay, slot, index)}
+          />
+        ))}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -261,7 +263,7 @@ export default function WeekScreen({ navigation }) {
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {picker.day} · {picker.slot}
+                Ajouter un plat · {picker.slot}
               </Text>
               <TouchableOpacity
                 onPress={() =>
@@ -279,7 +281,7 @@ export default function WeekScreen({ navigation }) {
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.pickRow}
-                  onPress={() => assignRecipe(item)}
+                  onPress={() => addRecipeToSlot(item)}
                 >
                   <Ionicons
                     name="restaurant-outline"
@@ -293,16 +295,6 @@ export default function WeekScreen({ navigation }) {
                 </TouchableOpacity>
               )}
             />
-
-            {picker.day && planning[picker.day]?.[picker.slot] && (
-              <TouchableOpacity
-                style={styles.removeRow}
-                onPress={removeFromSlot}
-              >
-                <Ionicons name="trash-outline" size={20} color={colors.danger} />
-                <Text style={styles.removeText}>Vider ce créneau</Text>
-              </TouchableOpacity>
-            )}
           </View>
         </View>
       </Modal>

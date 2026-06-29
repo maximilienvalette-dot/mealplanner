@@ -1,6 +1,6 @@
-// Carte d'un créneau de repas (Matin / Midi / Soir) dans la vue semaine.
-// Permet d'assigner une recette, fixer le nombre de personnes et cocher
-// l'inclusion dans la liste de courses.
+// Carte d'un créneau de repas (Matin / Midi / Goûter / Soir) dans la vue
+// semaine. Un créneau contient une LISTE de plats ; chaque plat a son propre
+// nombre de personnes et sa propre case "inclure aux courses".
 
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
@@ -9,72 +9,83 @@ import { colors, spacing, radius, fonts } from "../theme";
 
 export default function MealSlot({
   slotLabel,
-  slotData,
-  recipe,
-  onPress,
-  onToggleCheck,
-  onChangePersons,
+  dishes,
+  recipeById,
+  onAddDish,
+  onToggleDish,
+  onChangeDishPersons,
+  onRemoveDish,
 }) {
-  const hasRecipe = !!recipe;
-  const checked = !!(slotData && slotData.checked);
+  const checkedCount = dishes.filter((d) => d.checked).length;
 
   return (
-    <View
-      style={[
-        styles.card,
-        hasRecipe && checked && styles.cardChecked,
-      ]}
-    >
+    <View style={styles.card}>
       <View style={styles.header}>
         <Text style={styles.slotLabel}>{slotLabel}</Text>
-        {hasRecipe && (
-          <TouchableOpacity
-            onPress={onToggleCheck}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons
-              name={checked ? "checkmark-circle" : "ellipse-outline"}
-              size={26}
-              color={checked ? colors.checked : colors.textMuted}
-            />
-          </TouchableOpacity>
+        {dishes.length > 0 && (
+          <Text style={styles.count}>
+            {dishes.length} plat{dishes.length > 1 ? "s" : ""}
+            {checkedCount > 0 ? ` · ${checkedCount} aux courses` : ""}
+          </Text>
         )}
       </View>
 
-      <TouchableOpacity style={styles.body} onPress={onPress}>
-        {hasRecipe ? (
-          <Text style={styles.recipeName} numberOfLines={2}>
-            {recipe.name}
-          </Text>
-        ) : (
-          <View style={styles.emptyBody}>
-            <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-            <Text style={styles.emptyText}>Assigner une recette</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+      {dishes.map((dish, index) => {
+        const recipe = recipeById(dish.recipeId);
+        const checked = !!dish.checked;
+        const persons = dish.persons ?? (recipe ? recipe.refPersons : 1);
+        return (
+          <View
+            key={index}
+            style={[styles.dish, checked && styles.dishChecked]}
+          >
+            <View style={styles.dishTop}>
+              <TouchableOpacity
+                onPress={() => onToggleDish(index)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={checked ? "checkmark-circle" : "ellipse-outline"}
+                  size={24}
+                  color={checked ? colors.checked : colors.textMuted}
+                />
+              </TouchableOpacity>
+              <Text style={styles.dishName} numberOfLines={2}>
+                {recipe ? recipe.name : "Recette supprimée"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => onRemoveDish(index)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
 
-      {hasRecipe && (
-        <View style={styles.footer}>
-          <Ionicons name="people-outline" size={16} color={colors.textMuted} />
-          <TouchableOpacity
-            style={styles.stepBtn}
-            onPress={() => onChangePersons(-1)}
-          >
-            <Ionicons name="remove" size={16} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.personsText}>
-            {slotData?.persons ?? recipe.refPersons}
-          </Text>
-          <TouchableOpacity
-            style={styles.stepBtn}
-            onPress={() => onChangePersons(1)}
-          >
-            <Ionicons name="add" size={16} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.personsLabel}>pers.</Text>
-        </View>
-      )}
+            <View style={styles.dishBottom}>
+              <Ionicons name="people-outline" size={15} color={colors.textMuted} />
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => onChangeDishPersons(index, -1)}
+              >
+                <Ionicons name="remove" size={15} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.personsText}>{persons}</Text>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => onChangeDishPersons(index, 1)}
+              >
+                <Ionicons name="add" size={15} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.personsLabel}>pers.</Text>
+            </View>
+          </View>
+        );
+      })}
+
+      <TouchableOpacity style={styles.addBtn} onPress={onAddDish}>
+        <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+        <Text style={styles.addText}>Ajouter un plat</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -88,14 +99,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
-  cardChecked: {
-    borderColor: colors.checked,
-    backgroundColor: "#F1F8F1",
-  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: spacing.xs,
   },
   slotLabel: {
     fontSize: 12,
@@ -104,36 +112,38 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
-  body: {
+  count: { fontSize: 12, color: colors.textMuted, fontFamily: fonts.regular },
+  dish: {
+    backgroundColor: colors.background,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
     marginTop: spacing.sm,
-    minHeight: 28,
-    justifyContent: "center",
   },
-  recipeName: {
-    fontSize: 16,
+  dishChecked: {
+    borderColor: colors.checked,
+    backgroundColor: "#F1F8F1",
+  },
+  dishTop: { flexDirection: "row", alignItems: "center" },
+  dishName: {
+    flex: 1,
+    marginHorizontal: spacing.sm,
+    fontSize: 15,
     fontFamily: fonts.semibold,
     color: colors.text,
   },
-  emptyBody: {
+  dishBottom: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  emptyText: {
-    marginLeft: spacing.xs,
-    color: colors.primary,
-    fontSize: 14,
-    fontFamily: fonts.medium,
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
+    marginLeft: 2,
   },
   stepBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.background,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: "center",
@@ -141,16 +151,33 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.xs,
   },
   personsText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: fonts.bold,
     color: colors.text,
-    minWidth: 20,
+    minWidth: 18,
     textAlign: "center",
   },
   personsLabel: {
     marginLeft: spacing.xs,
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textMuted,
     fontFamily: fonts.regular,
+  },
+  addBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: "dashed",
+  },
+  addText: {
+    marginLeft: spacing.xs,
+    color: colors.primary,
+    fontSize: 14,
+    fontFamily: fonts.bold,
   },
 });
