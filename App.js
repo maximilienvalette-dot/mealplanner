@@ -2,6 +2,7 @@
 // L'onglet Recettes contient une pile (liste -> ajout/édition).
 
 import React from "react";
+import { Platform } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -58,10 +59,29 @@ function RecipesStackScreen() {
   );
 }
 
+// Détecte si l'app tourne en PWA installée (plein écran) : dans ce cas le
+// contenu va jusqu'au bord et il faut dégager la barre de gestes du bas.
+function isStandalonePWA() {
+  return (
+    Platform.OS === "web" &&
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    (window.matchMedia("(display-mode: standalone)").matches ||
+      window.matchMedia("(display-mode: fullscreen)").matches ||
+      window.navigator.standalone === true)
+  );
+}
+
 function AppContent() {
-  // Marge de sécurité du bas (barre de gestes / home indicator) : on l'ajoute
-  // à la barre d'onglets pour que les libellés ne soient jamais rognés.
+  // Marge de sécurité du bas (barre de gestes / home indicator) ajoutée à la
+  // barre d'onglets pour que les libellés ne soient jamais rognés.
+  //  - natif : inset réel de l'appareil ;
+  //  - PWA installée : plancher de 28px (Android n'expose pas l'inset) ;
+  //  - onglet navigateur : 0 (le navigateur réserve déjà la zone du bas).
   const insets = useSafeAreaInsets();
+  const bottomInset = isStandalonePWA()
+    ? Math.max(insets.bottom, 28)
+    : insets.bottom;
 
   return (
     <NavigationContainer onReady={() => SplashScreen.hideAsync()}>
@@ -75,9 +95,9 @@ function AppContent() {
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopColor: colors.border,
-            height: 64 + insets.bottom,
-            paddingBottom: insets.bottom + 10,
-            paddingTop: 8,
+            height: 60 + bottomInset,
+            paddingBottom: bottomInset + 8,
+            paddingTop: 6,
           },
           tabBarIcon: ({ color, size }) => {
             const icons = {

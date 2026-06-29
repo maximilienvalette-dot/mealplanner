@@ -1,9 +1,9 @@
 // Post-export : ajuste le <head> du HTML généré par Expo pour le web.
 //   1) <meta name="color-scheme" content="only light"> -> désactive le thème
 //      sombre automatique de Chrome dès le premier rendu.
-//   2) viewport-fit=cover dans le <meta viewport> -> active les valeurs
-//      env(safe-area-inset-*), nécessaires pour que la barre d'onglets ne soit
-//      pas rognée par la barre de gestes en PWA plein écran.
+//   2) <style> height:100svh -> borne l'app à la hauteur visible (évite que le
+//      bas passe sous le bord de l'écran sur mobile).
+// La marge basse en PWA installée est gérée côté React Native (App.js).
 
 import fs from "fs";
 
@@ -27,27 +27,11 @@ if (html.includes('name="color-scheme"')) {
   console.log("inject-web-fixes: color-scheme only light injecté");
 }
 
-// 2) viewport-fit=cover
-if (html.includes("viewport-fit=cover")) {
-  console.log("inject-web-fixes: viewport-fit déjà présent");
-} else {
-  const before = html;
-  // Ajoute viewport-fit=cover au contenu du meta viewport existant.
-  html = html.replace(
-    /(<meta\s+name=["']viewport["']\s+content=["'])([^"']*)(["'])/i,
-    (m, p1, content, p3) => `${p1}${content}, viewport-fit=cover${p3}`
-  );
-  if (html === before) {
-    // Pas de meta viewport trouvé : on en ajoute un.
-    html = html.replace(
-      "</head>",
-      '  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />\n  </head>'
-    );
-  }
-  console.log("inject-web-fixes: viewport-fit=cover ajouté");
-}
+// 2) On NE met PAS viewport-fit=cover : il fait dessiner le contenu sous la
+// barre de gestes (et rogne la barre d'onglets). La marge basse en PWA est
+// gérée côté React Native (App.js, détection display-mode standalone).
 
-// 3) Marge de sécurité basse en CSS pur (ne dépend pas de la lib safe-area,
+// 3) Hauteur de viewport sûre (ne dépend pas de la lib safe-area,
 // qui ne renvoie pas l'inset en web). On réserve la hauteur de la barre de
 // gestes sous le conteneur racine -> la barre d'onglets n'est plus rognée.
 if (html.includes("id=\"safe-area-fix\"")) {
