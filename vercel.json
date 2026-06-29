@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "expo export --platform web --output-dir dist",
+  "buildCommand": "expo export --platform web --output-dir dist && node scripts/inject-light-scheme.mjs",
   "outputDirectory": "dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/" }]
 }

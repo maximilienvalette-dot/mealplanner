@@ -9,6 +9,10 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import * as SplashScreen from "expo-splash-screen";
 import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import {
   useFonts,
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
@@ -54,16 +58,10 @@ function RecipesStackScreen() {
   );
 }
 
-export default function App() {
-  const [fontsLoaded] = useFonts({
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
-  });
-
-  if (!fontsLoaded) return null;
+function AppContent() {
+  // Marge de sécurité du bas (barre de gestes / home indicator) : on l'ajoute
+  // à la barre d'onglets pour que les libellés ne soient jamais rognés.
+  const insets = useSafeAreaInsets();
 
   return (
     <NavigationContainer onReady={() => SplashScreen.hideAsync()}>
@@ -77,8 +75,8 @@ export default function App() {
           tabBarStyle: {
             backgroundColor: colors.surface,
             borderTopColor: colors.border,
-            height: 60,
-            paddingBottom: 8,
+            height: 60 + insets.bottom,
+            paddingBottom: insets.bottom + 8,
             paddingTop: 6,
           },
           tabBarIcon: ({ color, size }) => {
@@ -110,5 +108,23 @@ export default function App() {
         />
       </Tab.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  const [fontsLoaded] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
+
+  if (!fontsLoaded) return null;
+
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
   );
 }
