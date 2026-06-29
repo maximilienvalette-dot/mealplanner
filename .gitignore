@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+dist/
+dist-web/
+dist-test/
+web-build/
+.vercel/
+expo-dev.log
+*.log
+.DS_Store
