@@ -47,4 +47,20 @@ if (html.includes("viewport-fit=cover")) {
   console.log("inject-web-fixes: viewport-fit=cover ajouté");
 }
 
+// 3) Marge de sécurité basse en CSS pur (ne dépend pas de la lib safe-area,
+// qui ne renvoie pas l'inset en web). On réserve la hauteur de la barre de
+// gestes sous le conteneur racine -> la barre d'onglets n'est plus rognée.
+if (html.includes("id=\"safe-area-fix\"")) {
+  console.log("inject-web-fixes: style safe-area déjà présent");
+} else {
+  html = html.replace(
+    "</head>",
+    `  <style id="safe-area-fix">
+    html, body, #root { background-color: #FFFFFF; }
+    #root { box-sizing: border-box; padding-bottom: env(safe-area-inset-bottom, 0px); }
+  </style>\n  </head>`
+  );
+  console.log("inject-web-fixes: padding safe-area (env) injecté sur #root");
+}
+
 fs.writeFileSync(file, html);
